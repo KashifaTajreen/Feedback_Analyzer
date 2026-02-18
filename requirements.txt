@@ -1,0 +1,4 @@
+textblob
+sqlite3
+bcrypt
+tkinter
