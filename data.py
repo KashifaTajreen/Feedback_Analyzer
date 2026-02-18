@@ -15,7 +15,7 @@ def init_sentiment_db():
     conn = sqlite3.connect("sentiment.db")
     cursor = conn.cursor()
     cursor.execute("""
-    CREATE TABLE IF NOT EXISTS feedback (
+    CREATE TABLE IF NOT EXISTS sentiment(
         session_name TEXT, session_id TEXT, overall_sentiment REAL)""")
     conn.commit()
     conn.close()
@@ -64,7 +64,7 @@ def insert_feedback(reviewer_name, reviewer_ID, score, comment, session_id):
 def insert_sentiment(session_name, session_id, overall_sentiment):
     conn = sqlite3.connect("sentiment.db")
     cursor = conn.cursor()
-    cursor.execute("INSERT INTO feedback VALUES (?, ?, ?)", (session_name, session_id, overall_sentiment))
+    cursor.execute("INSERT INTO sentiment VALUES (?, ?, ?)", (session_name, session_id, overall_sentiment))
     conn.commit()
     conn.close()
 
@@ -73,7 +73,7 @@ def get_session_summary(session_id):
     avg_score = conn_f.execute("SELECT AVG(score) FROM feedback WHERE session_id=?", (session_id,)).fetchone()[0]
     conn_f.close()
     conn_s = sqlite3.connect("sentiment.db")
-    avg_sent = conn_s.execute("SELECT AVG(overall_sentiment) FROM feedback WHERE session_id=?", (session_id,)).fetchone()[0]
+    avg_sent = conn_s.execute("SELECT AVG(overall_sentiment) FROM sentiment WHERE session_id=?", (session_id,)).fetchone()[0]
     conn_s.close()
     return {'avg_score': avg_score or 0.0, 'avg_sentiment': avg_sent or 0.0}
 
