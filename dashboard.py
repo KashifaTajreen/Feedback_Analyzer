@@ -48,12 +48,13 @@ def run_dashboard(parent, user_email):
             sessions = get_all_sessions()
             for i, s in enumerate(sessions):
                 # CARD CONTAINER
-                card = tk.Frame(scrollable_frame, bg=BG_CARD, width=320, height=220, # Reduced height
+                # Slightly increased height to 250 to safely handle wrapped text
+                card = tk.Frame(scrollable_frame, bg=BG_CARD, width=320, height=250, 
                                 highlightbackground=BTN_SECONDARY, highlightthickness=1)
                 card.grid(row=i//3, column=i%3, padx=20, pady=20)
                 card.pack_propagate(False)
 
-                # THREE DOTS
+                # THREE DOTS (Fixed Position)
                 menu_btn = tk.Label(card, text="⋮", font=("Segoe UI", 18, "bold"), bg=BG_CARD, fg=TEXT_DIM, cursor="hand2")
                 menu_btn.place(relx=0.95, rely=0.05, anchor="ne")
 
@@ -64,13 +65,18 @@ def run_dashboard(parent, user_email):
                 menu_btn.bind("<Button-1>", show_menu)
 
                 # LABELS
-                tk.Label(card, text=s['name'], font=("Segoe UI", 14, "bold"), bg=BG_CARD, fg=TEXT_MAIN).pack(pady=(20, 2))
+                # FIX: Added wraplength to prevent UI break on long names
+                tk.Label(card, text=s['name'], font=("Segoe UI", 13, "bold"), bg=BG_CARD, fg=TEXT_MAIN, 
+                         wraplength=250, justify="center").pack(pady=(25, 2))
+                
+                tk.Label(card, text=f"Host: {s['host']}", fg=TEXT_DIM, bg=BG_CARD, font=("Segoe UI", 9)).pack()
                 tk.Label(card, text=f"ID: {s['id']}", font=("Segoe UI", 9), bg=BG_CARD, fg=TEXT_DIM).pack()
+                tk.Label(card, text=f"Date: {s['date']}", fg=TEXT_DIM, bg=BG_CARD, font=("SEGOE UI", 9)).pack()
 
-                # BUTTONS (Tightened padding)
+                # BUTTONS (Positioned consistently)
                 tk.Button(card, text="Give Feedback", bg=GIVE_FEEDBACK_GREEN, fg="white", relief="flat",
                           font=("Segoe UI", 10, "bold"), cursor="hand2", 
-                          command=lambda sess=s: run_gui(root, sess)).pack(fill="x", padx=30, pady=(25, 10))
+                          command=lambda sess=s: run_gui(root, sess)).pack(fill="x", padx=30, pady=(15, 5))
 
                 tk.Button(card, text="View Analysis", bg=BTN_SECONDARY, fg=TEXT_MAIN, relief="flat",
                           font=("Segoe UI", 10, "bold"), cursor="hand2", 
@@ -88,7 +94,7 @@ def run_dashboard(parent, user_email):
     def handle_delete(session):
         def on_success():
             if messagebox.askyesno("Confirm Delete", f"Permanently delete '{session['name']}'?"):
-                if delete_session(session['id']): # Checking for successful return
+                if delete_session(session['id']):
                     load_sessions()
         verify_host_password(root, session, on_success)
 
@@ -102,6 +108,7 @@ def run_dashboard(parent, user_email):
 
 
            
+
 
 
 
