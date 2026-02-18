@@ -24,67 +24,141 @@ def run_dashboard(parent, user_email):
     root.state("zoomed")
     root.configure(bg=BG_DARK)
 
-    # --- PERSISTENT HEADER ---
+    # --- HEADER ---
     header_frame = tk.Frame(root, bg=BG_DARK, pady=20)
     header_frame.pack(fill="x")
-    tk.Label(header_frame, text="FEEDBACK ANALYZER", font=("Segoe UI", 28, "bold"), bg=BG_DARK, fg=ACCENT).pack()
-    tk.Label(header_frame, text=f"Logged in : {user_email.split('@')[0].upper()}", font=("Segoe UI", 11), bg=BG_DARK, fg=TEXT_DIM).pack()
+
+    tk.Label(header_frame, text="FEEDBACK ANALYZER",
+             font=("Segoe UI", 28, "bold"),
+             bg=BG_DARK, fg=ACCENT).pack()
+
+    tk.Label(header_frame,
+             text=f"Logged in : {user_email.split('@')[0].upper()}",
+             font=("Segoe UI", 11),
+             bg=BG_DARK, fg=TEXT_DIM).pack()
 
     # --- SCROLLABLE AREA ---
     canvas = tk.Canvas(root, bg=BG_DARK, highlightthickness=0)
     scrollbar = tk.Scrollbar(root, orient="vertical", command=canvas.yview)
-    scrollable_frame = tk.Frame(canvas, bg=BG_DARK)
 
-    window_id = canvas.create_window((root.winfo_screenwidth()//2, 0), window=scrollable_frame, anchor="n")
+    scrollable_frame = tk.Frame(canvas, bg=BG_DARK, padx=20, pady=20)
+
+    window_id = canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+
+    def on_frame_configure(event):
+        canvas.configure(scrollregion=canvas.bbox("all"))
+
+    scrollable_frame.bind("<Configure>", on_frame_configure)
+
+    def on_canvas_configure(event):
+        canvas.itemconfig(window_id, width=event.width)
+
+    canvas.bind("<Configure>", on_canvas_configure)
+
     canvas.configure(yscrollcommand=scrollbar.set)
     canvas.pack(side="left", fill="both", expand=True)
     scrollbar.pack(side="right", fill="y")
 
+    # --- MOUSE SCROLL ---
+    def _on_mousewheel(event):
+        canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+
+    canvas.bind_all("<MouseWheel>", _on_mousewheel)
+    canvas.bind_all("<Button-4>", lambda e: canvas.yview_scroll(-1, "units"))
+    canvas.bind_all("<Button-5>", lambda e: canvas.yview_scroll(1, "units"))
+
+    # Equal column spacing
+    for col in range(3):
+        scrollable_frame.grid_columnconfigure(col, weight=1)
+
+    # --- LOAD SESSIONS ---
     def load_sessions():
         for widget in scrollable_frame.winfo_children():
             widget.destroy()
 
         try:
             sessions = get_all_sessions()
+
             for i, s in enumerate(sessions):
-                # CARD CONTAINER
-                # Slightly increased height to 250 to safely handle wrapped text
-                card = tk.Frame(scrollable_frame, bg=BG_CARD, width=320, height=250, 
-                                highlightbackground=BTN_SECONDARY, highlightthickness=1)
-                card.grid(row=i//3, column=i%3, padx=20, pady=20)
+
+                card = tk.Frame(scrollable_frame,
+                                bg=BG_CARD,
+                                width=320,
+                                height=250,
+                                highlightbackground=BTN_SECONDARY,
+                                highlightthickness=2)
+
+                card.grid(row=i//3, column=i%3, padx=15, pady=20)
                 card.pack_propagate(False)
 
-                # THREE DOTS (Fixed Position)
-                menu_btn = tk.Label(card, text="⋮", font=("Segoe UI", 18, "bold"), bg=BG_CARD, fg=TEXT_DIM, cursor="hand2")
+                menu_btn = tk.Label(card,
+                                    text="⋮",
+                                    font=("Segoe UI", 18, "bold"),
+                                    bg=BG_CARD,
+                                    fg=TEXT_DIM,
+                                    cursor="hand2")
                 menu_btn.place(relx=0.95, rely=0.05, anchor="ne")
 
                 def show_menu(event, session=s):
-                    menu = tk.Menu(root, tearoff=0, bg=BG_CARD, fg=TEXT_MAIN, activebackground=ACCENT, activeforeground=BG_DARK)
-                    menu.add_command(label="🗑 Delete Session", command=lambda: handle_delete(session))
+                    menu = tk.Menu(root,
+                                   tearoff=0,
+                                   bg=BG_CARD,
+                                   fg=TEXT_MAIN,
+                                   activebackground=ACCENT,
+                                   activeforeground=BG_DARK)
+                    menu.add_command(label="🗑 Delete Session",
+                                     command=lambda: handle_delete(session))
                     menu.post(event.x_root, event.y_root)
+
                 menu_btn.bind("<Button-1>", show_menu)
 
-                # LABELS
-                # FIX: Added wraplength to prevent UI break on long names
-                tk.Label(card, text=s['name'], font=("Segoe UI", 13, "bold"), bg=BG_CARD, fg=TEXT_MAIN, 
-                         wraplength=250, justify="center").pack(pady=(25, 2))
-                
-                tk.Label(card, text=f"Host: {s['host']}", fg=TEXT_DIM, bg=BG_CARD, font=("Segoe UI", 9)).pack()
-                tk.Label(card, text=f"ID: {s['id']}", font=("Segoe UI", 9), bg=BG_CARD, fg=TEXT_DIM).pack()
-                tk.Label(card, text=f"Date: {s['date']}", fg=TEXT_DIM, bg=BG_CARD, font=("SEGOE UI", 9)).pack()
+                tk.Label(card, text=s['name'],
+                         font=("Segoe UI", 13, "bold"),
+                         bg=BG_CARD, fg=TEXT_MAIN,
+                         wraplength=250,
+                         justify="center").pack(pady=(25, 2))
 
-                # BUTTONS (Positioned consistently)
-                tk.Button(card, text="Give Feedback", bg=GIVE_FEEDBACK_GREEN, fg="white", relief="flat",
-                          font=("Segoe UI", 10, "bold"), cursor="hand2", 
-                          command=lambda sess=s: run_gui(root, sess)).pack(fill="x", padx=30, pady=(15, 5))
+                tk.Label(card, text=f"Host: {s['host']}",
+                         fg="white", bg=BG_CARD,
+                         font=("Segoe UI", 9)).pack()
 
-                tk.Button(card, text="View Analysis", bg=BTN_SECONDARY, fg=TEXT_MAIN, relief="flat",
-                          font=("Segoe UI", 10, "bold"), cursor="hand2", 
-                          command=lambda sess=s: verify_host_password(root, sess, lambda: run_analysis_view(root, sess))).pack(fill="x", padx=30)
+                tk.Label(card, text=f"ID: {s['id']}",
+                         font=("Segoe UI", 9),
+                         bg=BG_CARD, fg="white").pack()
 
-                #  HOVER EFFECTS
-                def on_enter(e, c=card): c.config(highlightbackground=ACCENT, highlightthickness=2)
-                def on_leave(e, c=card): c.config(highlightbackground=BTN_SECONDARY, highlightthickness=1)
+                tk.Label(card, text=f"Date: {s['date']}",
+                         fg="white", bg=BG_CARD,
+                         font=("Segoe UI", 9)).pack()
+
+                tk.Button(card,
+                          text="Give Feedback",
+                          bg=GIVE_FEEDBACK_GREEN,
+                          fg="white",
+                          relief="flat",
+                          font=("Segoe UI", 10, "bold"),
+                          cursor="hand2",
+                          command=lambda sess=s: run_gui(root, sess)
+                          ).pack(fill="x", padx=30, pady=(15, 5))
+
+                tk.Button(card,
+                          text="View Analysis",
+                          bg=BTN_SECONDARY,
+                          fg=TEXT_MAIN,
+                          relief="flat",
+                          font=("Segoe UI", 10, "bold"),
+                          cursor="hand2",
+                          command=lambda sess=s:
+                          verify_host_password(root, sess,
+                                               lambda:
+                                               run_analysis_view(root, sess))
+                          ).pack(fill="x", padx=30)
+
+                def on_enter(e, c=card):
+                    c.config(highlightbackground=ACCENT)
+
+                def on_leave(e, c=card):
+                    c.config(highlightbackground=BTN_SECONDARY)
+
                 card.bind("<Enter>", on_enter)
                 card.bind("<Leave>", on_leave)
 
@@ -93,22 +167,27 @@ def run_dashboard(parent, user_email):
 
     def handle_delete(session):
         def on_success():
-            if messagebox.askyesno("Confirm Delete", f"Permanently delete '{session['name']}'?"):
+            if messagebox.askyesno("Confirm Delete",
+                                   f"Permanently delete '{session['name']}'?"):
                 if delete_session(session['id']):
                     load_sessions()
+
         verify_host_password(root, session, on_success)
 
-    # FAB BUTTON
-    add_btn = tk.Button(root, text="+ Create New Session", bg=BTN_PRIMARY, fg="white", font=("Segoe UI", 11, "bold"), 
-                        relief="flat", cursor="hand2", padx=20, pady=10, command=lambda: open_create_session(root, load_sessions))
+    # --- FAB BUTTON ---
+    add_btn = tk.Button(root,
+                        text="+ Create New Session",
+                        bg=BTN_PRIMARY,
+                        fg="white",
+                        font=("Segoe UI", 11, "bold"),
+                        relief="flat",
+                        cursor="hand2",
+                        padx=20,
+                        pady=10,
+                        command=lambda:
+                        open_create_session(root, load_sessions))
+
     add_btn.place(relx=0.97, rely=0.95, anchor="se")
 
     load_sessions()
     root.mainloop()
-
-
-           
-
-
-
-
