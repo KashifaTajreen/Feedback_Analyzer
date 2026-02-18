@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
 from data import get_session_summary, get_comments_for_session, get_score_distribution
+from textblob import TextBlob  # Ensure 'pip install textblob' is done
 
 # --- COLOR PALETTE ---
 BG_DARK = "#0f172a"
@@ -8,6 +9,24 @@ BG_CARD = "#1e293b"
 ACCENT = "#22d3ee"
 TEXT_MAIN = "#f8fafc"
 TEXT_DIM = "#94a3b8"
+
+# --- NEW FUNCTION FOR SENTIMENT ANALYSIS ---
+def calculate_textblob_sentiment(comments):
+    """Analyzes comments and returns an average polarity score (-1.0 to 1.0)."""
+    if not comments:
+        return 0.0
+    
+    total_polarity = 0
+    valid_comments = 0
+    
+    for _, text in comments:
+        if text and str(text).strip():
+            # TextBlob returns polarity between -1 and 1
+            blob = TextBlob(str(text))
+            total_polarity += blob.sentiment.polarity
+            valid_comments += 1
+            
+    return total_polarity / valid_comments if valid_comments > 0 else 0.0
 
 def create_score_distribution(parent_frame, scores):
     """Refined bar chart for the dark theme."""
@@ -48,14 +67,12 @@ def create_score_distribution(parent_frame, scores):
 def run_analysis_view(dashboard_root, session):
     """An optimized version that prioritizes UI responsiveness."""
     
-    # 1. SHOW THE WINDOW IMMEDIATELY
     dashboard_root.withdraw()
     analysis_window = tk.Toplevel(dashboard_root)
     analysis_window.title(f"Analytics: {session['name']}")
     analysis_window.state("zoomed")
     analysis_window.configure(bg=BG_DARK)
 
-    # 2. RENDER THE SCAFFOLDING (The scrollable area)
     main_canvas = tk.Canvas(analysis_window, bg=BG_DARK, highlightthickness=0)
     v_scrollbar = ttk.Scrollbar(analysis_window, orient="vertical", command=main_canvas.yview)
     scroll_frame = tk.Frame(main_canvas, bg=BG_DARK)
@@ -73,21 +90,20 @@ def run_analysis_view(dashboard_root, session):
     content_wrapper = tk.Frame(scroll_frame, bg=BG_DARK)
     content_wrapper.pack(pady=20, padx=50)
 
-    # Temporary Loading Label
     loading_label = tk.Label(content_wrapper, text="Gathering Data...", font=("Segoe UI", 16), bg=BG_DARK, fg=ACCENT)
     loading_label.pack(pady=100)
     
-    # Force the window to show up so the user isn't waiting on a blank screen
     analysis_window.update()
 
     def load_data_and_build_ui():
-        # Fetching data inside this function
         session_id = session['id']
         summary = get_session_summary(session_id)
         comments = get_comments_for_session(session_id)
         score_counts = get_score_distribution(session_id)
+        
+        # Calculate text-based sentiment
+        text_sentiment_score = calculate_textblob_sentiment(comments)
 
-        # Clear loading label
         loading_label.destroy()
 
         # --- HEADER ---
@@ -111,11 +127,8 @@ def run_analysis_view(dashboard_root, session):
         avg_score = summary.get('avg_score', 0.0)
         tk.Label(stats_card, text="Overall Rating", font=("Segoe UI", 14, "bold"), bg=BG_CARD, fg=TEXT_MAIN).pack(anchor="w")
         
-        tk.Label(stats_card, text=f"{avg_score:.1f} / 10", 
-         font=("Segoe UI", 24, "bold"), 
-         bg=BG_CARD, fg=ACCENT).pack(anchor="w", pady=(5, 0))
-        tk.Label(stats_card, text="Average Session Score", 
-         font=("Segoe UI", 9), bg=BG_CARD, fg=TEXT_DIM).pack(anchor="w")
+        tk.Label(stats_card, text=f"{avg_score:.1f} / 10", font=("Segoe UI", 24, "bold"), bg=BG_CARD, fg=ACCENT).pack(anchor="w", pady=(5, 0))
+        tk.Label(stats_card, text="Average Session Score", font=("Segoe UI", 9), bg=BG_CARD, fg=TEXT_DIM).pack(anchor="w")
 
         style = ttk.Style()
         style.theme_use('default')
@@ -124,12 +137,18 @@ def run_analysis_view(dashboard_root, session):
         score_bar = ttk.Progressbar(stats_card, length=350, maximum=10, value=avg_score, style="Analysis.Horizontal.TProgressbar")
         score_bar.pack(pady=15, fill="x")
 
-        # SENTIMENT COLOR LOGIC
-        if avg_score >= 7: status, s_color = "Positive", "#10b981"
-        elif avg_score <= 4: status, s_color = "Negative", "#ef4444"
-        else: status, s_color = "Neutral", "#f59e0b"
+        # UPDATED SENTIMENT LOGIC USING TEXTBLOB
+        # Polarity range: -1 (Very Negative) to +1 (Very Positive)
+        if text_sentiment_score > 0.1: 
+            status, s_color = "Positive", "#10b981"
+        elif text_sentiment_score < -0.1: 
+            status, s_color = "Negative", "#ef4444"
+        else: 
+            status, s_color = "Neutral", "#f59e0b"
 
-        tk.Label(stats_card, text=f"Sentiment Analysis: {status}", font=("Segoe UI", 16, "bold"), bg=BG_CARD, fg=s_color).pack(pady=(40, 0))
+        # Display TextBlob Score alongside status
+        tk.Label(stats_card, text=f"Sentiment: {status} ({text_sentiment_score:+.2f})", 
+                 font=("Segoe UI", 16, "bold"), bg=BG_CARD, fg=s_color).pack(pady=(40, 0))
 
         # --- TABLE ---
         table_card = tk.Frame(content_wrapper, bg=BG_CARD, padx=20, pady=20)
@@ -156,7 +175,6 @@ def run_analysis_view(dashboard_root, session):
         tree.pack(side="left", fill="both", expand=True)
         table_scroll.pack(side="right", fill="y")
 
-        # Navigation
         tk.Button(content_wrapper, text="← Return to Dashboard", font=("Segoe UI", 11, "bold"), 
                   bg="black", fg=TEXT_MAIN, padx=25, pady=10, relief="flat", cursor="hand2", 
                   command=go_back).pack(pady=20)
@@ -166,7 +184,7 @@ def run_analysis_view(dashboard_root, session):
         dashboard_root.deiconify()
         dashboard_root.state("zoomed")
 
-    # This runs the data loading AFTER the window has appeared
     analysis_window.after(100, load_data_and_build_ui)
     analysis_window.protocol("WM_DELETE_WINDOW", go_back)
+
 
