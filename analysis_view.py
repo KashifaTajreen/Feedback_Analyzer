@@ -10,7 +10,7 @@ ACCENT = "#22d3ee"
 TEXT_MAIN = "#f8fafc"
 TEXT_DIM = "#94a3b8"
 
-# --- NEW FUNCTION FOR SENTIMENT ANALYSIS ---
+# --- FUNCTION FOR SENTIMENT ANALYSIS ---
 def calculate_textblob_sentiment(comments):
     """Analyzes comments and returns an average polarity score (-1.0 to 1.0)."""
     if not comments:
@@ -186,5 +186,6 @@ def run_analysis_view(dashboard_root, session):
 
     analysis_window.after(100, load_data_and_build_ui)
     analysis_window.protocol("WM_DELETE_WINDOW", go_back)
+
 
 
