@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
 from data import get_session_summary, get_comments_for_session, get_score_distribution
-from textblob import TextBlob  # Ensure 'pip install textblob' is done
+from textblob import TextBlob 
 
 # --- COLOR PALETTE ---
 BG_DARK = "#0f172a"
@@ -29,7 +29,6 @@ def calculate_textblob_sentiment(comments):
     return total_polarity / valid_comments if valid_comments > 0 else 0.0
 
 def create_score_distribution(parent_frame, scores):
-    """Refined bar chart for the dark theme."""
     chart_container = tk.Frame(parent_frame, bg=BG_CARD, padx=20, pady=20)
     chart_container.pack(pady=10, fill="both", expand=True)
 
@@ -65,7 +64,6 @@ def create_score_distribution(parent_frame, scores):
                            font=("Segoe UI", 10), fill=TEXT_DIM)
 
 def run_analysis_view(dashboard_root, session):
-    """An optimized version that prioritizes UI responsiveness."""
     
     dashboard_root.withdraw()
     analysis_window = tk.Toplevel(dashboard_root)
@@ -186,6 +184,7 @@ def run_analysis_view(dashboard_root, session):
 
     analysis_window.after(100, load_data_and_build_ui)
     analysis_window.protocol("WM_DELETE_WINDOW", go_back)
+
 
 
 
